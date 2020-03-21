@@ -6,6 +6,7 @@ package consignment;
 
 service ShippingService{
     rpc CreateConsignment(Consignment) returns (Response){} //buat method createConsignment oleh RPC
+    rpc GetConsignments(GetRequest) returns(Response){} //method untuk mengambil data semua pengiriman.
 }
 
 message Consignment{ //
@@ -23,8 +24,16 @@ message Container {
     string user_id = 4;
 }
 
+//blank GetRequest
+message GetRequest{}
+
 message Response{
     bool created = 1;
     Consignment consignment = 2;
+
+//tambahkan bermacam-macam pengiriman ke pesan response 
+    repeated Consignment consignments = 3;
 }
+
+
 

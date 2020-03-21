@@ -6,11 +6,11 @@ import (
 	"net"
 	"sync"
 
-	//import generate proto code
-	pb "project/proto/consignment"
+	//import generate proto code via github
+
+	pb "github.com/fahruroze/project_ta/proto/consignment"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 const ( //deklarasi port yang akan digunakan
@@ -19,21 +19,27 @@ const ( //deklarasi port yang akan digunakan
 
 type repository interface { //buat repo baru sebagai interface dari pb
 	Create(*pb.Consignment) (*pb.Consignment, error)
+	GetAll() []*pb.Consignment
 }
 
 //dummy repo
 type Repository struct {
-	mu         sync.RWMutex //
-	consigment []*pb.Consignment
+	mu           sync.RWMutex //
+	consignments []*pb.Consignment
 }
 
-//create new Consignment
-func (repo *Repository) Create(consigment *pb.Consigment) (*pb.Consignment, error) {
+//Method Create new Consignment
+func (repo *Repository) Create(consignment *pb.Consignment) (*pb.Consignment, error) {
 	repo.mu.Lock()
-	update := append(repo.consigments, consigment)
-	repo.consigments = update
+	update := append(repo.consignments, consignment)
+	repo.consignments = update
 	repo.mu.Unlock()
-	return consigment, nil
+	return consignment, nil
+}
+
+//Method GetAll Consignment
+func (repo *Repository) GetAll() []*pb.Consignment { //deklarasi method GetAll
+	return repo.consignments //return nya semua data pengiriman
 }
 
 //Service harus mengimplementasiksan semua method yang digenerate oleh protobuf
@@ -45,7 +51,7 @@ type service struct {
 //CreateConsignment, method yang dibuat
 // method ini bisa digunakan setelah digenerate oleh gRPC
 
-func (s *service) CreateConsignment(ctx context.Context, req *pb.Consigment) (*pb.Response, error) {
+func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment) (*pb.Response, error) {
 	//save pengiriman
 	consignment, err := s.repo.Create(req)
 	if err != nil {
@@ -55,6 +61,11 @@ func (s *service) CreateConsignment(ctx context.Context, req *pb.Consigment) (*p
 	//kirim Response sebagi nilai balik, sbg mana yg telah dididefinisikan di protobuf
 	return &pb.Response{Created: true, Consignment: consignment}, nil
 
+}
+
+func (s *service) GetConsignments(ctx context.Context, req *pb.GetRequest) (*pb.Response, error) {
+	consignments := s.repo.GetAll()
+	return &pb.Response{Consignments: consignments}, nil
 }
 
 func main() {
@@ -71,11 +82,8 @@ func main() {
 
 	pb.RegisterShippingServiceServer(s, &service{repo})
 
-	//reflection service di gRPC srver
-	reflection.Register(s)
-
 	log.Println("Running on Port:", port)
-	if err != nil {
+	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to server: %v", err)
 	}
 
